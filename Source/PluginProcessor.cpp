@@ -166,7 +166,8 @@ bool SimpleEQAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* SimpleEQAudioProcessor::createEditor()
 {
-    return new SimpleEQAudioProcessorEditor (*this);
+    //return new SimpleEQAudioProcessorEditor (*this);
+    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -181,6 +182,64 @@ void SimpleEQAudioProcessor::setStateInformation (const void* data, int sizeInBy
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+}
+
+//return type = juce::AudioProcessorValueTreeState::ParameterLayout
+//function is createParameterLayout(), defined within the scope SimpleEQAudioProcessor
+juce::AudioProcessorValueTreeState::ParameterLayout SimpleEQAudioProcessor::createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+    
+    //id, name, range for slider, and default value
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("LowCut Freq", 1),
+        "LowCut Freq",
+        //min freq, max frew, step size (steps for changing freq), skew factor (can make slider non-linear)
+        juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 1.f),
+        20.f));
+    
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("HighCut Freq", 1),
+        "HighCut Freq",
+        //min freq, max frew, step size (steps for changing freq), skew factor (can make slider non-linear)
+        juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 1.f),
+        20000.f));
+    
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("Peak Freq", 1),
+        "Peak Freq",
+        //min freq, max frew, step size (steps for changing freq), skew factor (can make slider non-linear)
+        juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 1.f),
+        750.f));
+    
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("Peak Gain", 1),
+        "Peak Gain",
+        //min freq, max frew, step size (steps for changing freq), skew factor (can make slider non-linear)
+        juce::NormalisableRange<float>(-24.f, 24.f, 0.5f, 1.f),
+        0.0f));
+    
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("Quality", 1),
+        "Quality",
+        //min freq, max frew, step size (steps for changing freq), skew factor (can make slider non-linear)
+        juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 1.f),
+        1.0f));
+    
+    //12, 24, 36, 48 (multiples of 6 work well w the math)
+    juce::StringArray stringArray;
+    for (int i = 0; i <= 4; i++) {
+        juce::String str;
+        str << (12 + i * 12);
+        str << " db/Oct";
+        
+        stringArray.add(str);
+    };
+    
+    layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("LowCut Slope", 1), "LowCut Slope", stringArray, 0));
+    layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("HighCut Slope", 1), "HighCut Slope", stringArray, 0));
+    
+    return layout;
 }
 
 //==============================================================================
