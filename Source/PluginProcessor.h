@@ -60,6 +60,23 @@ public:
     
     
 private:
+    
+    //filter alias for the DSP
+    using Filter = juce::dsp::IIR::Filter<float>;
+    //IIR:  IIR filter that can perform low, high, or band-pass filtering on an audio signal, and attempts to implement basic thread-safety.
+    
+    //DSP concept: define a ProcessorChain, to which you pass a Processing Context. will run through each element of the chain automatically
+    //so can put 4 filters in a processing chain, which allows us to pass it a single context and have it process the audio
+    
+    //filter for high or low cut
+    using CutFilter = juce::dsp::ProcessorChain<Filter, Filter, Filter, Filter>;
+    
+    //chain for a single audio channel. LowCut -> Parametric -> HighCut
+    using MonoChain = juce::dsp::ProcessorChain<CutFilter, Filter, CutFilter>;
+ 
+    //need two MonoChains for sterio
+    MonoChain leftChain, rightChain;
+    
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleEQAudioProcessor)
 };

@@ -95,6 +95,24 @@ void SimpleEQAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
+    
+    //must prepare our filters before we use them. Pass a ProcessSpec object to the chains, which will then pass it to each link in the chain
+    
+    juce::dsp::ProcessSpec spec;
+    
+    //max samples it will expect to process
+    spec.maximumBlockSize = samplesPerBlock;
+    
+    //needs to know num chanels. Mono chains only handle one chanel
+    spec.numChannels = 1;
+    
+    //needs to know the sample rate
+    spec.sampleRate = sampleRate;
+    
+    leftChain.prepare(spec);
+    rightChain.prepare(spec);
+    
+    
 }
 
 void SimpleEQAudioProcessor::releaseResources()
@@ -144,18 +162,17 @@ void SimpleEQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        auto* channelData = buffer.getWritePointer (channel);
+    juce::dsp::AudioBlock<float> block(buffer);
+    
+    auto leftBlock = block.getSingleChannelBlock(0);
+    auto rightBlock = block.getSingleChannelBlock(1);
+    
+    juce::dsp::ProcessContextReplacing<float> leftContext(leftBlock);
+    juce::dsp::ProcessContextReplacing<float> rightContext(rightBlock);
 
-        // ..do something to the data...
-    }
+    leftChain.process(leftContext);
+    rightChain.process(rightContext);
+    
 }
 
 //==============================================================================
@@ -188,6 +205,21 @@ void SimpleEQAudioProcessor::setStateInformation (const void* data, int sizeInBy
 //function is createParameterLayout(), defined within the scope SimpleEQAudioProcessor
 juce::AudioProcessorValueTreeState::ParameterLayout SimpleEQAudioProcessor::createParameterLayout()
 {
+    
+    /*
+    Summary of Key Parameters:
+    | **Parameter**     | **Purpose**                                   | **Range**               |
+    |--------------------|-----------------------------------------------|-------------------------|
+    | LowCut Freq       | Cut low frequencies below this threshold      | 20 Hz to 20 kHz         |
+    | HighCut Freq      | Cut high frequencies above this threshold     | 20 Hz to 20 kHz         |
+    | Peak Freq         | Central frequency for peak filter             | 20 Hz to 20 kHz         |
+    | Peak Gain         | Boost or cut level around peak frequency      | -24 dB to +24 dB        |
+    | Quality           | Controls the width of the peak/dip           | 0.1 to 10 (narrow to wide) |
+    | LowCut Slope      | Steepness of the low cut filter               | 12 to 48 dB/oct         |
+    | HighCut Slope     | Steepness of the high cut filter              | 12 to 48 dB/oct         |
+    */
+
+    
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     
     //id, name, range for slider, and default value
@@ -205,12 +237,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout SimpleEQAudioProcessor::crea
         juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 1.f),
         20000.f));
     
+    //allows a narrow range of frequencies while rejecting all others
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("Peak Freq", 1),
         "Peak Freq",
         //min freq, max frew, step size (steps for changing freq), skew factor (can make slider non-linear)
         juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 1.f),
         750.f));
+    
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("Peak Gain", 1),
